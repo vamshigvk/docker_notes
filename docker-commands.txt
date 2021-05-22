@@ -1,0 +1,458 @@
+https://docs.docker.com/engine/reference/commandline/run/
+_________________________________________
+
+#install docker:
+
+sudo apt-get install docker.io
+
+OR
+
+curl fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+_________________________________________
+
+# check the version of docker:
+sudo docker --version
+
+# pull docker/whalesay app from dockerhub
+sudo docker run docker/whalesay cowsay Hello-World!
+
+#Run - start a container from an image, downloads the image if its not present and runs it 
+sudo docker run nginx
+
+# ps - list all running containers
+sudo docker ps
+
+# ps - a : to get all running and previously stopped or exited containers
+sudo docker ps -all
+
+# stop : stop a container which is running
+sudo docker stop name_of_container
+
+# rm : remove a stopped or exited container permanently
+sudo docker rm name_of_container
+
+# images : List images
+sudo docker images
+
+# rmi : remove images , remember that no container is running(stop and delete all such containers) that image you wanted to delete
+sudo docker rmi image_name
+
+# pull : download an image, just saves the image and not runs it
+sudo docker pull nginx
+
+# append a command 
+sudo docker run ubuntu sleep 5
+
+# exec : execute a command on the running container
+sudo docker exec vamshiubuntu cat /etc/hosts
+
+# run and attach/detach 
+docker run kodekloud/simple-webapp  # runs foreground on your console
+docker run -d kodekloud/simple-webapp # runs background and console can be accessed normally
+docker attach name/id_of_docker_container # to attach back to the running container
+
+# run - tag : getting required version of image
+sudo docker run redis:4.0
+
+#Stop and delete all the containers being used by images. Then run the command to delete all the available images: 
+docker rmi $(docker images -aq)
+
+_________________________________________
+
+
+# ubuntu image from docker hub
+sudo docker run -d --name vamshiubuntu ubuntu:latest
+
+# RUN - STDIN, use -i for interactice mode, -t for terminal
+docker run -i kodekloud/simple-prompt-docker
+docker run -it kodekloud/simple-prompt-docker
+
+# run -port mapping, remember the underlying host where docker is installed is called docker-host or docker-engine
+# map port 80 of localhost to port 5000 on the docker container
+	 <host_port>:<container_port>
+docker run -p 80:5000 kodekloud/simple-webapp
+
+# run multiple instances for multiple apps changing the localhost ports
+docker run -p 3306:3306 mysql
+docker run -p 8306:3306 mysql
+
+# run - volume mapping
+docker run mysql
+docker stop mysql : everything gets destroyed
+docker rm mysql
+
+# to persist data on the container, use a volume outside the container
+docker run -v /opt/datadir:/var/lib/msyql mysql
+
+# inspect container : additional details about the container, returns in json format, with state, env vars,  mount and config data, network settings , etc
+docker inspect <container_name/container_id>
+
+# container logs(in the background)
+docker logs <container_name/container_id>
+
+_________________________________________
+
+# environment variables , color=os.environ.get('APP_COLOR')
+docker run -e APP_COLOR=blue simple-webapp-color
+
+
+_________________________________________
+
+# create you custom image
+# prerequisites goes like this:
+1. install OS - Ubuntu
+2. update apt repo
+3. install dependencies using apt
+4. install python dependencies using pip
+5. copy source code to /opt folder
+6. run the web server using "flask" command
+
+#instructions in CAPS, arguments in smalls
+
+dockerfile:
+"""
+FROM Ubuntu
+
+RUN apt-get update
+RUN apt-get install python
+
+RUN pip install flask
+RUN pip install flask-mysql
+
+COPY . /opt/source-code
+
+ENTRYPOINT FLASK_APP=/opt/source-code/app.py flask run
+"""
+
+# build your custom image
+docker build Dockerfile -t vamshigvk/my-custom-app
+
+# to push the image to docker hub
+docker push vamshigvk/my-custom-app
+
+# check the image layered architecture and the memory consumed by each layered, and every layer is cached, so that it only starts running from the failed layer on #the next build
+docker history vamshigvk/my-custom-app
+
+# you can containerize everything, browsers, curl, spotify, anything. Once the task is completed by the container, the container exits.
+# A container lives only as long as the process inside it is alive
+EX: if the webserver inside the container stops/crashes, the container stops running and exits
+
+# to remove images with name as <none>
+docker rmi $(docker images -f “dangling=true” -q)
+_________________________________________
+
+# COMMANDS:
+docker run ubuntu {COMMAND}
+docker run ubuntu sleep 5
+
+# if you wanted to make the change permanent you can specify the command inside the docker file
+dockerfile:
+"""
+FROM Ubuntu
+
+CMD sleep 5
+"""
+
+# syntax for CMD:
+CMD command param1 			: CMD sleep 5
+CMD ["command","param1"]    : CMD {"sleep","5"]
+
+docker build -t ubuntu-sleeper .
+docker run ubuntu-sleeper 
+OR
+docker run ubuntu-sleeper sleep 10
+
+_________________________________________
+
+in case of CMD instructions , the CLI parameters passed will get replaced entirely, but incase of entrypoint the CLI instructions get appended
+_________________________________________
+
+
+# entrypoint instruction: the entrypoint instruction is like the command instruction as in you can specify the program that will be run when the container starts and whatever you specify on the command line will get appended to the entrypoint
+
+"""
+FROM Ubuntu
+
+ENTRYPOINT ["sleep"]
+"""
+
+docker run ubuntu-sleeper 20
+
+_________________________________________
+
+so use both CMD and ENTRYPOINT in JSON format
+
+Dockerfile
+"""
+FROM Ubuntu
+
+ENTRYPOINT ["sleep"]
+
+CMD ["20"]
+"""
+
+docker run ubuntu-sleeper 10 ==> it will be "sleep 10" at the startup
+OR
+docker run ubuntu-sleeper ==> it will be "sleep 20" at the startup
+
+
+# if you want to modify entrypoint command 
+docker run --entrypoint sleep2.0 ubuntu-sleeper 10
+_________________________________________
+
+#Run a container named blue-app using image kodekloud/simple-webapp and set the environment variable APP_COLOR to blue. Make the application available on port 38282 on the host. The application listens on port 8080.
+
+docker run -p 38282:8080 --name blue-app -e APP_COLOR=blue -d kodekloud/simple-webapp
+To know the env field from within a webapp container, run docker exec -it webapp env
+
+_________________________________________
+
+#What is the base Operating System used by the python:3.6 image? If required, run an instance of the image to figure it out.
+
+docker run python:3.6 cat /etc/*release* command.
+
+_________________________________________
+
+#Build a new smaller docker image by modifying the same Dockerfile and name it webapp-color and tag it lite.
+Hint: Find a smaller base image for python:3.6. Make sure the final image is less than 150MB.
+
+Modify Dockerfile to use python:3.6-alpine image and then build using docker build -t webapp-color:lite .
+
+_________________________________________
+
+# Networks 1. bridge, 2. none, 3. host
+# bridge network is a private internal network created by docker on the host, all containers gets attached to this network by default and get internal ip range at 172.17 series, containers can access each other using this internal ip, to access any of these containers from the outside world, map the ports using -p command
+docker run ubuntu 				  #bridge
+
+# this way containers wont have access to external network or other containers, they run in an isolated network
+docker run Ubuntu --network=none  #none
+
+# associate the container to the host network, this takes the network isolation between the docker host and the docker container, port mapping not required and multiple instances of same container won't work.(as the ports will be same)
+docker run Ubuntu --network=host  #host
+
+# by default docker only creates one internal network, you can create your own using below command to change ip range
+docker network create --driver bridge --subnet 182.18.0.0/16 custom-isolated-network
+
+# list all networks
+docker network ls
+
+# network settings and ips assigned to existing container
+docker inspect id_name_of_container
+
+# Embedded DNS, containers can reach each other using names or ipaddress(not best way, as ip changes on reboot),
+# note that DNS always runs on 127.0.0.11
+# docker creates a separate name space for each container then uses virtual ethernet pairs to connect containers together
+
+#Deploy a web application named webapp, using image kodekloud/simple-webapp-mysql. Expose port to 38080 on the host. The application takes an environment variable DB_Host that has the hostname of the mysql database. Make sure to attach it to the newly created network wp-mysql-network
+
+docker run --network=wp-mysql-network -e DB_Host=mysql-db -e DB_Password=db_pass123 -p 38080:8080 --name webapp --link mysql-db:mysql-db -d kodekloud/simple-webapp-mysql
+
+	
+
+_________________________________________
+
+# docker storage: below is the file system when you install docker, docker storage drivers are responsible for all these to work using commands	and enable layered architecture, some common storage drivers are aufs(default for ubuntu), zfs, btrfs, device mapper, overlay, overlay2, 
++/var/lib/docker
+				+aufs
+				+containers
+				+image
+				+volumes
+
+# layers that gets created when you build an image are readable only, when you run that image, then the writable layer will be created, it is used to store data such as temp data created by container and any file modified by user on that container, this layer destroys when the container is destroyed.
+# you can modify any file in the read only layer, but it won't be saved to the image, its saved as a copy/version(copy-on-write mechanism) of that file in the writable layer, i.e. container, so the image will remain same all the time until you build the image again.
+
+#volumes: adding persistent volume to the container, volume mounting:
+docker volume create <volume_name>
+docker volume create data_volume
+
++/var/lib/docker
+				+aufs
+				+containers
+				+image
+				+volumes(outside writable layer)
+						+data_volume
+
+docker run -v data_volume:/var/lib/msyql mysql
+
+# if the folder is at any location on docker host but not in default /var/lib/docker/volumes: Bind mounting
+docker run -v /data/mysql:/var/lib/msyql mysql
+
+# preferred way to mount these days:
+docker run --mount type=bind, source=/data/mysql, target=/var/lib/msyql mysql
+
+_________________________________________
+
+# compose: to run many containers on a single docker host
+
+docker run mmumshad/simple-webapp
+docker run mongodb
+docker run redis/alpine
+docker run ansible
+
+docker-compose.yml:
+Version : 1
+"""
+services:
+		web:
+			image: "mmumshad/simple-webapp"
+		database:
+			image: "mongodb"
+		messaging:
+			image: "redis/alpine"
+		orchestration:
+			image: "ansible"
+"""
+
+docker-compose up
+
+
+_________________________________________
+
+#sample application - voting app
+
+# linking 2 containers, it adds link to the host app at /etc/hosts
+docker run -d --name=vote -p 5000:80 --link redis:redis voting-app
+
+docker run -d --name=db --link :redis voting-app
+
+OR
+
+docker compose -buiid
+docker-compose.yml
+"""
+redis:
+	image:redis
+db:
+	image:postgres:9.4
+vote:
+	image:voting-app     #or build: ./vote # folder location where docker file is present
+	ports:
+		-5000:80
+	links:
+		-redis
+result:
+	image: result 		 #or build: ./result
+	prots:
+		-5000:80
+	links:
+		-db
+worker:
+	image: worker		 #or buiid: ./worker
+	links:
+		-db
+		-redis
+"""
+
+
+docker compose -versions : 
+
+"""
+version: 2
+services:
+		web:
+			image: "mmumshad/simple-webapp"
+		database:
+			image: "mongodb"
+		messaging:
+			image: "redis/alpine"
+			networks:
+				-front-end
+				-back-end
+		orchestra-tion:
+			image: "ansible"
+			depends_on:
+				-redis
+networks:
+	front-end:
+	back-end:
+"""
+_________________________________________
+
+
+"""
+version: 3 # comes with support for docker swarm
+services:
+		web:
+			image: "mmumshad/simple-webapp"
+		database:
+			image: "mongodb"
+		messaging:
+			image: "redis/alpine"
+		orchestration:
+			image: "ansible"
+			depends_on:
+				-redis
+"""
+
+_________________________________________
+
+# docker registry: where docker images are stored, central repo of docker images : username/reponame, DNS name for docker hub is docker.io(is called registry)
+# gcr.io is googles registry, 
+docker run nginx == docker run nginx/nginx
+
+# private registry:
+docker registry private-registry.io
+username:
+password:
+docker run private-registry.io/apps/internal-app
+
+# deploy private registry, locally
+docker run -d -p 5000:5000 --name registry registry:2
+docker image tag my-image localhost:5000/my-image
+docker push localhost:5000/my-image
+docker pull localhost:5000/my-image
+docker pull 192.168.56.100/my-image  # if you are out of localhost network
+
+_________________________________________
+
+# when you install docker on you linux instance, you are actually installing 3 components:
+1. Docker Daemon = background process that manages objects such as images, containers, volumes and networks
+2. Rest API server = API interface that programs can use to talk to the daemon and provide instructions. you could create your own tools
+3. Docker CLI = you can perform actions such as running the containers, stopping containers, destroying images etc, it uses rest api to interact with docker daemon
+# docker CLI can also be on Laptop instead of docker engine, and can connect to docker engine this way:
+docker -H=remote-docker-engine:2375 
+OR
+docker -H=10.123.2.1:2375 run nginx
+
+Docker uses namespaces to isolate workspace process_IDs, network, mount, inter-process-communication, unix-timesharing systems are created in their own namespaces but in their own containers
+
+# docker uses cgroups/control groups to restrict the amount of hardware resources allocated to each container.
+docker run --cpu=0.5 ubuntu
+docker run --memory=100m ubuntu
+
+_________________________________________
+
+# Docker on windows:
+1. docker on windows using Docker Toolbox
+2. docker desktop for windows
+
+_________________________________________
+
+# Docker container orchestration : to scale up and down instances depends on the demand, for load balancing and networking as well
+# docker swarm, kubernets, mesos are orchestration services
+
+docker service create --replicas=100 nodejs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
